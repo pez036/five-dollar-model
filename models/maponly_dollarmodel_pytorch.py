@@ -134,6 +134,6 @@ def train(model, EPOCHS):
 
 		print(f"Epoch:{epoch} -- Loss:{loss_metric_train[epoch]:.2f}")
 
-#BATCH_SIZE = 256
-#mapmodel = Gen('mapmodel')
-#rain(mapmodel, 100)
+BATCH_SIZE = 256
+mapmodel = Gen('mapmodel')
+train(mapmodel, 100)
