@@ -47,15 +47,21 @@ class ResBlock(nn.Module):
 		return x1 + x
 
 class Gen(nn.Module):
-	def __init__(self, model_name, embedding_dim=384, z_dim=5, kern_size=7, filter_count=128, num_res_blocks=3):
+	def __init__(self, model_name, img_shape, lr, data_path, dataset_type, embedding_dim=384, z_dim=5, kern_size=7, filter_count=128, num_res_blocks=3, condition_type=''):
 		super().__init__()
 
 		self.embedding_dim = embedding_dim
 		self.model_name = model_name
+		self.img_shape = img_shape
 		self.z_dim = z_dim
 		self.filter_count = filter_count
 		self.kern_size = kern_size
 		self.num_res_blocks = num_res_blocks
+
+		self.lr = lr
+		self.data_path = data_path
+		self.dataset_type = dataset_type
+		self.condition_type = condition_type
 
 		self.lin1 = nn.Linear(self.embedding_dim + self.z_dim, self.filter_count * 4 * 4)
 
@@ -79,7 +85,7 @@ class Gen(nn.Module):
 		return self.softmax(x)
 
 
-def load_data(path, scaling_factor=6):
+def load_data(path, scaling_factor=6, batch_size=256):
 	data = np.load(path, allow_pickle=True).item()
 	images = np.array(data['images'])
 	labels = data['labels']
@@ -96,22 +102,23 @@ def load_data(path, scaling_factor=6):
 	test_dataset = [embeddings_test, images_test]
 
 	train_set = DataLoader(imageDataSet(train_dataset),
-					   batch_size=BATCH_SIZE,
+					   batch_size=batch_size,
 					   shuffle=True,
 					   num_workers= 8 if device == 'cuda' else 1,
 					   pin_memory=(device=="cuda")) # Makes transfer from the CPU to GPU faster
 
 	test_set = DataLoader(imageDataSet(test_dataset),
-					  batch_size=BATCH_SIZE,
+					  batch_size=batch_size,
 					  shuffle=True,
 					  num_workers= 8 if device == 'cuda' else 1,
 					  pin_memory=(device=="cuda")) # Makes transfer from the CPU to GPU faster
 
 	return train_set, test_set
 
-def train(model, EPOCHS):
+def train(model, EPOCHS, batch_size):
 
-	train_set, test_set = load_data("../datasets/maps_gpt4_aug.npy")
+	#train_set, test_set = load_data("../datasets/maps_gpt4_aug.npy")
+	train_set, test_set = load_data(model.data_path, batch_size)
 
 	loss_metric_train = torch.zeros(EPOCHS).to(device)
 
@@ -135,5 +142,21 @@ def train(model, EPOCHS):
 		print(f"Epoch:{epoch} -- Loss:{loss_metric_train[epoch]:.2f}")
 
 #BATCH_SIZE = 256
-#mapmodel = Gen('mapmodel')
-#rain(mapmodel, 100)
+_input_shape = (10, 10, 16)
+_data_path = "../datasets/maps_gpt4_aug.npy"
+_lr = 0.005
+_model_name = "map_model"
+_dataset_type = 'map'
+_embedding_dim = 384
+_z_dim = 5
+_kern_size = 7
+_filter_count = 128
+_num_res_blocks = 3
+
+_epochs = 100
+_batch_size = 256
+
+mapmodel = Gen(model_name=_model_name, img_shape=_input_shape, lr=_lr, data_path=_data_path, dataset_type=_dataset_type, 
+				embedding_dim=_embedding_dim, z_dim=_z_dim, kern_size=_kern_size, filter_count=_filter_count, num_res_blocks=_num_res_blocks)
+#(model_name="test_modelname", img_shape=input_shape, lr=0.0005, embedding_dim=384, z_dim=5, filter_count=128, kern_size=5, num_res_blocks=3, dataset_type='map', data_path='datasets/maps_noaug.npy')
+train(mapmodel, _epochs, _batch_size)
